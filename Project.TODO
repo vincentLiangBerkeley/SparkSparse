@@ -1,0 +1,40 @@
+Project Week 1:
+  ✔ Write up IO routine for test matrices and vectors @done (14-10-24 16:44)
+    ✔ Write up "MatrixVectorIO.scala" as an object that provides utility methods @done (14-10-24 16:44)
+  ✔ Write up map reduce routine for multiplying COO matrix and local vector @done (14-10-26 15:49)
+    ✔ Write up a function SparseUtility.scala that provides multiplication routines(Can we make that a member of Coordinate Matrix?) @done (14-10-26 15:49)
+    1. Map (i, j, a(i,j)) to (i, a(i, j) * input(j))
+    2. ReduceByKey: Key-type = Long, Value-type = Double, Reduce Function = Addition
+    3. Collect and transform into a local vector // This requires an iteration over the entries
+  ☐ Write up map reduce routine for multiplying COO matrix with an other RDD of vector entries
+    ☐ Probably have to write up a wrapper for RDD vector
+
+  Questions:
+    ✔ Can we make multiplication a member of Coordinate Matrix? Or overload the operator *? @done (14-10-30 14:23)
+      Later merge into the class
+    ✔ Can we generalize the matrix to adept to more data types like Int, Boolean (for pattern matrix)? @done (14-10-30 14:25)
+    ✔ If "vectors" have size "Int", what if the size of the matrix is too large for "Int"? (Although not likely) Then why we make matrix Long? @done (14-10-30 14:31)
+    ✔ Any other suggestions for testing? Performance analysis? @done (14-10-30 14:37)
+      Use Breeze linalg library in unit tests
+      Check out AYDIN BULUC
+
+Project Week 2:
+  ✔ Write up left multiplication of vectors, the same routine but just change i, j @done (14-10-30 13:08)
+  ✔ Write up Scala unit tests using Breeze linear algebra library locally @done (14-11-02 16:28)
+  ✔ Learn how to use Git and locally test for results using Breeze library @done (14-11-02 21:32)
+  ✔ Set up a new Git repository for the project and upload all the codes @done (14-11-02 21:32)
+
+  Possible Test Programs:
+    1. Matrix Market
+    2. Random Matrix Java Applet
+
+Project Week 3:
+  ☐ Test for multiply suite does not pass: breeze/Storate/DefaultArrayValue class def not found @Debug
+    Does not have to rewrite Breeze matrix IO codes, just transform the Coordinate matrix into Breeze dense matrix
+  ☐ Write up new classes for Coordinate matrices and MatrixEntry so that it caters to more data types @Important
+  ☐ Write up IO routines to handle symmetric matrix forms as well
+  ☐ Test on Edison by remote connection @Important
+
+Project Week 4:
+  ☐ Performance comparison (recording)
+  ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional

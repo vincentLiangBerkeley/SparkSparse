@@ -29,9 +29,9 @@ Project Week 2:
     2. Random Matrix Java Applet
 
 Project Week 3:
-  ☐ Test for multiply suite does not pass: breeze/Storate/DefaultArrayValue class def not found @Debug
+  ✔ Test for multiply suite does not pass: breeze/Storate/DefaultArrayValue class def not found @Debug @done (14-11-03 15:45)
     Does not have to rewrite Breeze matrix IO codes, just transform the Coordinate matrix into Breeze dense matrix
-  ☐ Write up new classes for Coordinate matrices and MatrixEntry so that it caters to more data types @Important
+  ✔ Write up new classes for Coordinate matrices and MatrixEntry so that it caters to more data types @Important @done (14-11-03 15:45)
   ☐ Write up IO routines to handle symmetric matrix forms as well
   ☐ Test on Edison by remote connection @Important
 

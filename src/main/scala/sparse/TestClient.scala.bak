@@ -1,6 +1,5 @@
 package sparse
 
-import org.apache.spark.mllib.linalg.distributed.{MatrixEntry, CoordinateMatrix}
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._

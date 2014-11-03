@@ -55,6 +55,16 @@ class CoordinateMatrix[E](
     nRows
   }
 
+   /**
+    Multiplies a Coordinate matrix with a local vector.
+    @param matrix: The coordinate matrix to be multiplied with
+    @Param vector: The local vector, could be multiplied on the left or right
+    @Param sc: The SparkContext that handles parallel computations
+    @Param(Optional) numTasks: THe number of tasks used to reduce the result, default is 4
+    @Param(Optional) "trans": A boolean variable indicating the "trans" of multiplication, by default is "true", meaning on the right
+    x = A * v (if trans = true)
+    x = A' * v (otherwise)
+  */
   def multiply(vector: Vector, sc: SparkContext, numTasks: Int = 4, trans: Boolean = true): Vector = {
     if (trans) require(vector.size == this.numCols.toInt, "Matrix vector size mismatch!")
     else require(vector.size == this.numRows.toInt, "Matrix vector size mismatch!")
@@ -127,6 +137,10 @@ class CoordinateMatrix[E](
     nCols = math.max(nCols, n1 + 1L)
   }
 
+  /**
+   * Also make this toBreeze public because it has to be at least private to mllib, which I cannot
+   * restrict to.
+   */
   override def toBreeze(): BDM[Double] = {
     val m = numRows().toInt
     val n = numCols().toInt

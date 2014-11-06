@@ -32,9 +32,12 @@ Project Week 3:
   ✔ Test for multiply suite does not pass: breeze/Storate/DefaultArrayValue class def not found @Debug @done (14-11-03 15:45)
     Does not have to rewrite Breeze matrix IO codes, just transform the Coordinate matrix into Breeze dense matrix
   ✔ Write up new classes for Coordinate matrices and MatrixEntry so that it caters to more data types @Important @done (14-11-03 15:45)
-  ☐ Write up IO routines to handle symmetric matrix forms as well
+  ✔ Write up IO routines to handle symmetric matrix forms as well @done (14-11-06 12:21)
+  ☐ Test with medium size matrix(nnz = 10000), and large matrices, possibly(nnz = 100000)
   ☐ Test on Edison by remote connection @Important
 
 Project Week 4:
   ☐ Performance comparison (recording)
+  ☐ Implement CSR format, there are two ways to go about it, local and global.
+  ☐ Maybe I could do some simple sparse QR algorithm?
   ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional

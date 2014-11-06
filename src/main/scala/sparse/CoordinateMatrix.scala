@@ -29,12 +29,14 @@ case class MatrixEntry[E](i: Long, j: Long, value: E)
  *              be determined by the max row index plus one.
  * @param nCols number of columns. A non-positive value means unknown, and then the number of
  *              columns will be determined by the max column index plus one.
+ * @param sym A boolean parameter telling us whether the matrix is symmetric, if it is, only "triu" will be stored
  */
 @Experimental
 class CoordinateMatrix[E](
     val entries: RDD[MatrixEntry[E]],
     private var nRows: Long,
-    private var nCols: Long) extends DistributedMatrix {
+    private var nCols: Long,
+    private val sym: Boolean = false) extends DistributedMatrix {
 
   /** Alternative constructor leaving matrix dimensions to be determined automatically. */
   def this(entries: RDD[MatrixEntry[E]]) = this(entries, 0L, 0L)
@@ -55,39 +57,19 @@ class CoordinateMatrix[E](
     nRows
   }
 
-   /**
-    Multiplies a Coordinate matrix with a local vector.
-    @param matrix: The coordinate matrix to be multiplied with
-    @Param vector: The local vector, could be multiplied on the left or right
-    @Param sc: The SparkContext that handles parallel computations
-    @Param(Optional) numTasks: THe number of tasks used to reduce the result, default is 4
-    @Param(Optional) "trans": A boolean variable indicating the "trans" of multiplication, by default is "true", meaning on the right
-    x = A * v (if trans = true)
-    x = A' * v (otherwise)
-  */
-  def multiply(vector: Vector, sc: SparkContext, numTasks: Int = 4, trans: Boolean = true): Vector = {
-    if (trans) require(vector.size == this.numCols.toInt, "Matrix vector size mismatch!")
-    else require(vector.size == this.numRows.toInt, "Matrix vector size mismatch!")
+  // This contains calls to a method in SparseUtility, where the real multiplication routine is stored
+  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
+    if (!sym) SparseUtility.multiplyHelper(this, vector, sc, trans, numTasks)
+    else {
+      // Notice that a symmetric matrix must be square
+      // So we compute Ay + (A - diag(A))^Ty
+      val first = SparseUtility.multiplyHelper(this, vector, sc, false, numTasks)
+      val lowerA = new CoordinateMatrix(this.entries.filter(entry => entry.i != entry.j), numRows, numCols)
+      val second = SparseUtility.multiplyHelper(lowerA, vector, sc, true, numTasks)
 
-    val copies = sc.broadcast(vector.toArray)
-    // This is a RDD of MatrixEntry
-    val entries = this.entries
-
-    // Map each row with the vector entry
-    val mappedMatrix = entries.map{ entry => 
-        // @Problem: Possibility is that the matrix is too large, j.toInt overflows
-        val index = if(trans) entry.j else entry.i
-        val value = entry.value match {
-            case bv: Boolean => copies.value(index.toInt)
-            case iv: Int => iv * copies.value(index.toInt)
-            case dv: Double => dv * copies.value(index.toInt)
-        }
-        if (trans) (entry.i, value) else (entry.j, value)
+      val result = for( i <- 0 until first.size) yield first(i) + second(i)
+      Vectors.dense(result.toArray)
     }
-
-    val vectorArray = mappedMatrix.reduceByKey(_+_, 4).collect // The number of tasks could be changing
-    val length = if (trans) this.numCols.toInt else this.numRows.toInt
-    SparseUtility.transform(vectorArray, length)  
   }
 
   // I do not allow transformations to indexed-row matrices at the moment

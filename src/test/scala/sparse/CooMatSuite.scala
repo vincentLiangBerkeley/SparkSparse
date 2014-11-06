@@ -8,10 +8,8 @@ import org.apache.log4j.Logger
 
 class CooMatSuite extends FunSuite with LocalSparkContext{
     trait TestEnv {
-        val files = List("fidap005.mtx", "fidapm05.mtx", "pores_1.mtx")
-        val filePath = "/Users/Vincent/Documents/GSI/MATH221/Project/" 
-        val outputPath = filePath + "output/"
-        val vectorPath = filePath + "vectors/" 
+        val filesReal = List("fidap005.mtx", "fidapm05.mtx", "pores_1.mtx")
+        val filePath = "/Users/Vincent/Documents/GSI/MATH221/Project/SparkSparse/"  
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
     }
@@ -21,7 +19,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(files(0))
+            val matrix = IOobject.readMatrix(filesReal(0))
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -37,12 +35,33 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
         }
     }
 
+    test("Multiplication of fidap005 with transpose"){
+        new TestEnv{
+            sc = new SparkContext("local", "test")
+            
+            val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
+            val matrix = IOobject.readMatrix(filesReal(0))
+            val length = matrix.numRows
+            
+            val vector = SparseUtility.randomVector(0, 1, length)
+
+            val sparkResult = matrix multiply(vector, sc, true)
+
+            val localMatrix = matrix.toBreeze
+            val localVector = DenseVector(vector.toArray)
+
+            val result = DenseVector(sparkResult.toArray)
+
+            assert(max(result - localMatrix.t * localVector) < 0.0001)
+        }
+    }
+
     test("Multiplication of fidapm05"){
         new TestEnv{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(files(1))
+            val matrix = IOobject.readMatrix(filesReal(1))
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -63,7 +82,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(files(2))
+            val matrix = IOobject.readMatrix(filesReal(2))
             val length = matrix.numCols
             val vector = SparseUtility.randomVector(0, 1, length)
 

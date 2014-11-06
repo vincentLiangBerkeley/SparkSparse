@@ -8,9 +8,7 @@ import scala.io.Source
 import breeze.linalg._
 
 // The path variable should be the path where the matrices are stored
-class BreezeIO(path: String) {
-    private val filePath = path
-
+class BreezeIO(val filePath: String) {
     // This function basically just decodes the Matrix Market format and return a dense matrix
     def readMatrix(name: String): DenseMatrix[Double] = {
         val lines = Source.fromFile(filePath + name).getLines().toArray

@@ -8,7 +8,7 @@ import org.apache.log4j.Logger
 
 class CooMatSuite extends FunSuite with LocalSparkContext{
     trait TestEnv {
-        val filesReal = List("fidap005.mtx", "fidapm05.mtx", "pores_1.mtx")
+        val filesReal = List("fidap005.mtx", "fidapm05.mtx", "pores_1.mtx", "mcca.mtx", "bcspwr04.mtx", "ash219.mtx", "orani678.mtx")
         val filePath = "/Users/Vincent/Documents/GSI/MATH221/Project/SparkSparse/"  
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
@@ -23,77 +23,130 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
 
+            val start = System.currentTimeMillis
             val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
 
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
 
+            
             assert(max(result - localMatrix * localVector) < 0.0001)
+            
+            System.out.println("The running time is " + (end - start) + "ms.")
+
         }
     }
 
-    test("Multiplication of fidap005 with transpose"){
+    test("Multiplication of orani678.mtx"){
         new TestEnv{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(0))
+            val matrix = IOobject.readMatrix(filesReal(6))
             val length = matrix.numRows
             
             val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
 
-            val sparkResult = matrix multiply(vector, sc, true)
+            val start = System.currentTimeMillis
+            val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
 
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
 
-            assert(max(result - localMatrix.t * localVector) < 0.0001)
+            
+            assert(max(result - localMatrix * localVector) < 0.0001)
+            
+            System.out.println("The running time is " + (end - start) + "ms.")
         }
     }
 
-    test("Multiplication of fidapm05"){
+    test("Multiplication of mcca"){
         new TestEnv{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(1))
+            val matrix = IOobject.readMatrix(filesReal(3))
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
 
+            val start = System.currentTimeMillis
             val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
 
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
 
+            
             assert(max(result - localMatrix * localVector) < 0.0001)
+            
+            System.out.println("The running time is " + (end - start) + "ms.")
         }
     }
 
-    test("Multiplication of pores_1"){
+    test("Multiplication of bcspwr04.mtx, pattern matrix"){
         new TestEnv{
             sc = new SparkContext("local", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(2))
+            val matrix = IOobject.readMatrix(filesReal(4))
             val length = matrix.numCols
+            
             val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
 
+            val start = System.currentTimeMillis
             val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
 
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
 
+            
             assert(max(result - localMatrix * localVector) < 0.0001)
+            
+            System.out.println("The running time is " + (end - start) + "ms.")
+        }
+    }
+
+    test("Multiplication of ash219.mtx, pattern matrix"){
+        new TestEnv{
+            sc = new SparkContext("local", "test")
+            
+            val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
+            val matrix = IOobject.readMatrix(filesReal(5))
+            val length = matrix.numCols
+            
+            val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
+            
+            val start = System.currentTimeMillis
+            val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
+
+            val localMatrix = matrix.toBreeze
+            val localVector = DenseVector(vector.toArray)
+
+            val result = DenseVector(sparkResult.toArray)
+
+            
+            assert(max(result - localMatrix * localVector) < 0.0001)
+            
+            System.out.println("The running time is " + (end - start) + "ms.")
         }
     }
 

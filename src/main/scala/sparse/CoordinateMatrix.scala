@@ -2,6 +2,7 @@ package sparse
 
 import breeze.linalg.{DenseMatrix => BDM}
 
+import org.apache.spark
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
@@ -17,7 +18,7 @@ import org.apache.spark.mllib.linalg.distributed._
  * @param value value of the entry
  */
 @Experimental
-case class MatrixEntry[E](i: Long, j: Long, value: E)
+case class MatrixEntry(i: Long, j: Long, value: Double)
 
 /**
  * :: Experimental ::
@@ -32,14 +33,14 @@ case class MatrixEntry[E](i: Long, j: Long, value: E)
  * @param sym A boolean parameter telling us whether the matrix is symmetric, if it is, only "triu" will be stored
  */
 @Experimental
-class CoordinateMatrix[E](
-    val entries: RDD[MatrixEntry[E]],
+class CoordinateMatrix(
+    val entries: RDD[MatrixEntry],
     private var nRows: Long,
     private var nCols: Long,
     private val sym: Boolean = false) extends DistributedMatrix {
 
   /** Alternative constructor leaving matrix dimensions to be determined automatically. */
-  def this(entries: RDD[MatrixEntry[E]]) = this(entries, 0L, 0L)
+  def this(entries: RDD[MatrixEntry]) = this(entries, 0L, 0L)
 
   /** Gets or computes the number of columns. */
   override def numCols(): Long = {
@@ -59,20 +60,64 @@ class CoordinateMatrix[E](
 
   // This contains calls to a method in SparseUtility, where the real multiplication routine is stored
   def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
-    if (!sym) SparseUtility.multiplyHelper(this, vector, sc, trans, numTasks)
+    if (!sym) multiplyHelper(this, vector, sc, trans, numTasks)
     else {
       // Notice that a symmetric matrix must be square
       // So we compute Ay + (A - diag(A))^Ty
-      val first = SparseUtility.multiplyHelper(this, vector, sc, false, numTasks)
+      val first = multiplyHelper(this, vector, sc, false, numTasks)
+
+      // This is potentially inefficient because it requires space for new coordinate matrix
       val lowerA = new CoordinateMatrix(this.entries.filter(entry => entry.i != entry.j), numRows, numCols)
-      val second = SparseUtility.multiplyHelper(lowerA, vector, sc, true, numTasks)
+
+      val second = multiplyHelper(lowerA, vector, sc, true, numTasks)
 
       val result = for( i <- 0 until first.size) yield first(i) + second(i)
       Vectors.dense(result.toArray)
     }
   }
 
-  // I do not allow transformations to indexed-row matrices at the moment
+  /**
+    Multiplies a Coordinate matrix with a local vector.
+    @param matrix: The coordinate matrix to be multiplied with
+    @param vector: The local vector, could be multiplied on the left or right
+    @param sc: The SparkContext that handles parallel computations
+    @param(Optional) numTasks: THe number of tasks used to reduce the result, default is 4
+    @Param(Optional) "trans": A boolean variable indicating the "trans" of multiplication, by default is "false", meaning on the right
+    x = A * v (if trans = false)
+    x = A' * v (if trans = true)
+  */
+  private def multiplyHelper(matrix: CoordinateMatrix, vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
+        if (matrix.numRows > Int.MaxValue || matrix.numCols > Int.MaxValue)
+            sys.error("Cannot multiply this matrix because size is too large!")
+
+        // Length of the output vector
+        val length = if (trans) matrix.numCols.toInt else matrix.numRows.toInt
+        require(vector.size == matrix.numCols.toInt, "Matrix vector size mismatch!")
+
+        val copies = sc.broadcast(vector.toArray)
+        // This is a RDD of MatrixEntry
+        val entries = matrix.entries.map{entry =>
+             if(trans) (entry.j, (entry.i, entry.value))
+             else (entry.i, (entry.j, entry.value))
+        }.cache()
+
+        System.out.println("Num of partitions originally is " + entries.partitions.size)
+
+        // Map each row with the vector entry
+        // Repartition will be used here so that reduceByKey will communicate minimal information
+        val mappedMatrix = entries.map{ entry => 
+            val index = entry._2._1
+            val value = copies.value(index.toInt) * entry._2._2
+            (entry._1, value)
+        }
+        //.partitionBy(new spark.HashPartitioner(length / 5)).persist
+
+        System.out.println("Num of partitions after repartition is " + mappedMatrix.partitions.size)
+
+        val vectorArray = mappedMatrix.reduceByKey(_+_, numTasks).collect // The number of tasks could be changing
+        
+        SparseUtility.transform(vectorArray, length)  
+      }
 
   /** Converts to IndexedRowMatrix. The number of columns must be within the integer range. */
   def toIndexedRowMatrix(): IndexedRowMatrix = {
@@ -85,11 +130,7 @@ class CoordinateMatrix[E](
 
     // We have to cast all the entries into doubles again
     val entriesAsDoubles: RDD[(Long, Int, Double)] = entries.map {entry =>
-      entry.value match {
-        case bv: Boolean => (entry.i, entry.j.toInt, 1.00)
-        case iv: Int => (entry.i, entry.j.toInt, iv.toDouble)
-        case db: Double => (entry.i, entry.j.toInt, db)
-      }
+      (entry.i, entry.j.toInt, entry.value)
     }
 
     val indexedRows = entriesAsDoubles.map(entry => (entry._1, (entry._2, entry._3)))
@@ -128,11 +169,8 @@ class CoordinateMatrix[E](
     val n = numCols().toInt
     val mat = BDM.zeros[Double](m, n)
     entries.collect().foreach { case MatrixEntry(i, j, value) =>
-      value match {
-        case bv: Boolean => mat(i.toInt, j.toInt) = 1.00
-        case iv: Int => mat(i.toInt, j.toInt) = iv.toDouble
-        case v: Double => mat(i.toInt, j.toInt) = v
-      }
+      mat(i.toInt, j.toInt) = value
+      if (sym) mat(j.toInt, i.toInt) = value
     }
     mat
   }

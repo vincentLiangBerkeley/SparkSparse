@@ -33,11 +33,19 @@ Project Week 3:
     Does not have to rewrite Breeze matrix IO codes, just transform the Coordinate matrix into Breeze dense matrix
   ✔ Write up new classes for Coordinate matrices and MatrixEntry so that it caters to more data types @Important @done (14-11-03 15:45)
   ✔ Write up IO routines to handle symmetric matrix forms as well @done (14-11-06 12:21)
-  ☐ Test with medium size matrix(nnz = 10000), and large matrices, possibly(nnz = 100000)
+  ✔ Repartition the entries so that each partition contains a row @done (14-11-08 22:31)
+  ✔ Do a "reduce" operation on each partition, and then a "collect" operation over all the partitions. @done (14-11-08 22:31)
+  ☐ Optimize the routines for symmetric multiplication, and a partition so that each processor has a subset of the rows.
+  ✔ Test with medium size matrix(nnz = 10000), and large matrices, possibly(nnz = 100000) @done (14-11-08 23:36)
   ☐ Test on Edison by remote connection @Important
 
+  Problem:
+    ✔ It seems that the lower the num of partitions, the faster the program @done (14-11-09 17:22)
+    ✔ Multiplying matrices as dense ones locally is much faster(100x) then using the Spark routine @done (14-11-09 17:22)
+      It seems that the most expensive operation is the "map", that's because for each coordinate I did a "match" operation
+      Performance is expected to improve if I know the type beforehand, i.e use implicit num ops
 Project Week 4:
+  ☐ Optimize the code, repartition should happen on input data, that is Entries: RDD[MatrixEntry] when reading the matrix in
   ☐ Performance comparison (recording)
   ☐ Implement CSR format, there are two ways to go about it, local and global.
-  ☐ Maybe I could do some simple sparse QR algorithm?
   ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional

@@ -18,21 +18,23 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
         val size = (sizeInfo(0).toLong, sizeInfo(1).toLong)
 
         // The following codes depend on matrix market's matrix format
-        val entryFiled = matInfo(3)
+        val entryField = matInfo(3)
         val matFormat = matInfo(4)
 
         val sym: Boolean = if(matFormat == "general") false else true
 
+        System.out.println("sym = " + sym, " entryField = " + entryField) 
+
         // This line of codes drops the first two lines of the file which is already captured 
         val filteredInput = input.mapPartitionsWithIndex{case (index, iter) => if(index == 0) iter.drop(2) else iter}
-        
-        entryFiled match {
+
+        entryField match {
             case "real" => 
-                val entries = filteredInput.map(x => new MatrixEntry[Double](x(0).toLong - 1, x(1).toInt - 1, x(2).toDouble))
-                new CoordinateMatrix[Double](entries, size._1, size._2, sym)
+                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, x(2).toDouble)).persist
+                new CoordinateMatrix(entries, size._1, size._2, sym)
             case "pattern" => 
-                val entries = filteredInput.map(x => new MatrixEntry[Boolean](x(0).toLong - 1, x(1).toInt - 1, true))
-                new CoordinateMatrix[Boolean](entries, size._1, size._2, sym)
+                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, 1.0)).persist
+                new CoordinateMatrix(entries, size._1, size._2, sym)
         }
     }
 

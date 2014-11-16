@@ -1,6 +1,7 @@
 package sparse
 
 import breeze.linalg.{DenseMatrix => BDM}
+import breeze.linalg._
 
 import org.apache.spark
 import org.apache.spark.annotation.Experimental
@@ -30,17 +31,45 @@ case class MatrixEntry(i: Long, j: Long, value: Double)
  *              be determined by the max row index plus one.
  * @param nCols number of columns. A non-positive value means unknown, and then the number of
  *              columns will be determined by the max column index plus one.
- * @param sym A boolean parameter telling us whether the matrix is symmetric, if it is, only "triu" will be stored
+ * @param sym A boolean parameter telling us whether the matrix is symmetric, if it is, only "tril" will be stored
  */
 @Experimental
 class CoordinateMatrix(
     val entries: RDD[MatrixEntry],
     private var nRows: Long,
     private var nCols: Long,
-    private val sym: Boolean = false) extends DistributedMatrix {
+    private val sym: Boolean = false,
+    private val partNum: Int = 1) extends DistributedMatrix {
 
   /** Alternative constructor leaving matrix dimensions to be determined automatically. */
   def this(entries: RDD[MatrixEntry]) = this(entries, 0L, 0L)
+  def this(entries: RDD[MatrixEntry], sym: Boolean) = this(entries, 0L, 0L, sym)
+  def this(entries: RDD[MatrixEntry], partNum: Int) = this(entries, 0L, 0L, false, partNum)
+  def this(entries: RDD[MatrixEntry], sym: Boolean, partNum: Int) = this(entries, 0L, 0L, sym, partNum)
+
+  // Transform the entries to RDD[(index, SparseVector)] as a row index and the row
+  val rowForm = toSparseRowVectors(entries.map(entry => (entry.i, (entry.j.toInt, entry.value)))).persist
+  val colForm = toSparseRowVectors(entries.map(entry => (entry.j, (entry.i.toInt, entry.value)))).persist
+
+  private def toSparseRowVectors(matrix: RDD[(Long, (Int, Double))]): RDD[(Long, SparseVector[Double])] = {
+    matrix.groupByKey(new spark.HashPartitioner(partNum)).map{
+      case(key, value) => 
+        val sortedPairs = value.toArray.sortWith((v1, v2) => v1._1 < v2._1)
+        val len = sortedPairs.size
+        val index = new Array[Int](len)
+        val elems = new Array[Double](len)
+
+        for( i <- 0 until len) {
+          index(i) = sortedPairs(i)._1
+          elems(i) = sortedPairs(i)._2
+        }
+
+        val sp = new SparseVector(index, elems, len, numCols.toInt)
+        (key, sp)
+    }
+  }
+
+  //val rowForm = entries.map(entry => (entry.i, (entry.j.toInt, entry.value))).partitionBy(new spark.HashPartitioner(partNum)).persist
 
   /** Gets or computes the number of columns. */
   override def numCols(): Long = {
@@ -58,24 +87,6 @@ class CoordinateMatrix(
     nRows
   }
 
-  // This contains calls to a method in SparseUtility, where the real multiplication routine is stored
-  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
-    if (!sym) multiplyHelper(this, vector, sc, trans, numTasks)
-    else {
-      // Notice that a symmetric matrix must be square
-      // So we compute Ay + (A - diag(A))^Ty
-      val first = multiplyHelper(this, vector, sc, false, numTasks)
-
-      // This is potentially inefficient because it requires space for new coordinate matrix
-      val lowerA = new CoordinateMatrix(this.entries.filter(entry => entry.i != entry.j), numRows, numCols)
-
-      val second = multiplyHelper(lowerA, vector, sc, true, numTasks)
-
-      val result = for( i <- 0 until first.size) yield first(i) + second(i)
-      Vectors.dense(result.toArray)
-    }
-  }
-
   /**
     Multiplies a Coordinate matrix with a local vector.
     @param matrix: The coordinate matrix to be multiplied with
@@ -86,38 +97,27 @@ class CoordinateMatrix(
     x = A * v (if trans = false)
     x = A' * v (if trans = true)
   */
-  private def multiplyHelper(matrix: CoordinateMatrix, vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
-        if (matrix.numRows > Int.MaxValue || matrix.numCols > Int.MaxValue)
-            sys.error("Cannot multiply this matrix because size is too large!")
+  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
+    require(numRows < Int.MaxValue && numCols < Int.MaxValue, "Cannot multiply this matrix because size is too large!")
+    require(vector.size == numCols.toInt, "Matrix vector size mismatch!")
+    val copies = sc.broadcast(vector.toArray)
+    val v = DenseVector(copies.value)
 
-        // Length of the output vector
-        val length = if (trans) matrix.numCols.toInt else matrix.numRows.toInt
-        require(vector.size == matrix.numCols.toInt, "Matrix vector size mismatch!")
+    if(!sym){
+      val vectorArray = if (trans) colForm.map{case(ind, sp) => (ind, sp dot v)}.collect
+                        else rowForm.map{case(ind, sp) => (ind, sp dot v)}.collect
+      if (trans) SparseUtility.transform(vectorArray, numCols.toInt)
+      else SparseUtility.transform(vectorArray, numRows.toInt)
+    }else{
+      // Notice that a symmetric matrix must be square
+      // So we compute Ay + (A - diag(A))^Ty
+      val first = rowForm.map{case(ind, sp) => (ind, sp dot v)}.collect
+      val second = colForm.map{case(ind, sp) => (ind, sp.dot(v) - sp(ind.toInt) * v(ind.toInt))}.collect
 
-        val copies = sc.broadcast(vector.toArray)
-        // This is a RDD of MatrixEntry
-        val entries = matrix.entries.map{entry =>
-             if(trans) (entry.j, (entry.i, entry.value))
-             else (entry.i, (entry.j, entry.value))
-        }.cache()
-
-        System.out.println("Num of partitions originally is " + entries.partitions.size)
-
-        // Map each row with the vector entry
-        // Repartition will be used here so that reduceByKey will communicate minimal information
-        val mappedMatrix = entries.map{ entry => 
-            val index = entry._2._1
-            val value = copies.value(index.toInt) * entry._2._2
-            (entry._1, value)
-        }
-        //.partitionBy(new spark.HashPartitioner(length / 5)).persist
-
-        System.out.println("Num of partitions after repartition is " + mappedMatrix.partitions.size)
-
-        val vectorArray = mappedMatrix.reduceByKey(_+_, numTasks).collect // The number of tasks could be changing
-        
-        SparseUtility.transform(vectorArray, length)  
-      }
+      val result = first ++ second
+      SparseUtility.transform(result, numRows.toInt)
+    }
+  }
 
   /** Converts to IndexedRowMatrix. The number of columns must be within the integer range. */
   def toIndexedRowMatrix(): IndexedRowMatrix = {

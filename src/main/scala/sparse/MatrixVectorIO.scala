@@ -3,6 +3,7 @@ package sparse
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
+import org.apache.spark
 import scala.io.Source
 import java.io._
 
@@ -10,7 +11,7 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
     // Currently can only read in real, patter, integer matrices in general form.
     // @TODO: Add symmetric form to it
     // @Todo: Add other data types, i.e pattern, integer
-    def readMatrix(name: String) = {
+    def readMatrix(name: String, partNum: Int = 1) = {
         val input = sc.textFile(filePath + name).map(x => x.split(' ').filter(y => y.length > 0))
         val meta = input.take(2)
         val matInfo = meta(0) // This has the matrix info like "sym", "real", "int", "pattern"
@@ -30,11 +31,11 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
 
         entryField match {
             case "real" => 
-                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, x(2).toDouble)).persist
-                new CoordinateMatrix(entries, size._1, size._2, sym)
+                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, x(2).toDouble))
+                new CoordinateMatrix(entries, size._1, size._2, sym, partNum)
             case "pattern" => 
-                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, 1.0)).persist
-                new CoordinateMatrix(entries, size._1, size._2, sym)
+                val entries = filteredInput.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, 1.0))
+                new CoordinateMatrix(entries, size._1, size._2, sym, partNum)
         }
     }
 

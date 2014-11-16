@@ -13,12 +13,12 @@ object SparseUtility {
         val output = for( i <- 0 until length.toInt) yield mean + generator.nextGaussian() * variance   
         Vectors.dense(output.toArray)
     }   
+    
     // Extract this routine as a separate function for future usage
     def transform(vectorArray: Array[(Long, Double)], length: Int): Vector = {
         val result = new Array[Double](length)
-        var i = 0
         for (i <- 0 until vectorArray.length){
-            result(vectorArray(i)._1.toInt) = vectorArray(i)._2
+            result(vectorArray(i)._1.toInt) += vectorArray(i)._2
         }   
         Vectors.dense(result)
     }

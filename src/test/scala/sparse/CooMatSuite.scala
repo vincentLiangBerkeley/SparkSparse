@@ -35,10 +35,12 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val result = DenseVector(sparkResult.toArray)
 
             
+            val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
-            
-            System.out.println("The running time is " + (end - start) + "ms.")
+            val endLocal = System.currentTimeMillis
 
+            System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
         }
     }
 
@@ -63,9 +65,12 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val result = DenseVector(sparkResult.toArray)
 
             
+            val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
-            
+            val endLocal = System.currentTimeMillis
+
             System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
         }
     }
 
@@ -90,13 +95,16 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val result = DenseVector(sparkResult.toArray)
 
             
+            val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
-            
+            val endLocal = System.currentTimeMillis
+
             System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
         }
     }
 
-    test("Multiplication of bcspwr04.mtx, pattern matrix"){
+    test("Multiplication of bcspwr04.mtx, pattern symmetric matrix"){
         new TestEnv{
             sc = new SparkContext("local", "test")
             
@@ -116,10 +124,12 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
 
             val result = DenseVector(sparkResult.toArray)
 
-            
+            val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
-            
+            val endLocal = System.currentTimeMillis
+
             System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
         }
     }
 
@@ -143,10 +153,12 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
 
             val result = DenseVector(sparkResult.toArray)
 
-            
+            val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
-            
+            val endLocal = System.currentTimeMillis
+
             System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
         }
     }
 

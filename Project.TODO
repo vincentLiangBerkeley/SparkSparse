@@ -6,8 +6,6 @@ Project Week 1:
     1. Map (i, j, a(i,j)) to (i, a(i, j) * input(j))
     2. ReduceByKey: Key-type = Long, Value-type = Double, Reduce Function = Addition
     3. Collect and transform into a local vector // This requires an iteration over the entries
-  ☐ Write up map reduce routine for multiplying COO matrix with an other RDD of vector entries
-    ☐ Probably have to write up a wrapper for RDD vector
 
   Questions:
     ✔ Can we make multiplication a member of Coordinate Matrix? Or overload the operator *? @done (14-10-30 14:23)
@@ -35,7 +33,7 @@ Project Week 3:
   ✔ Write up IO routines to handle symmetric matrix forms as well @done (14-11-06 12:21)
   ✔ Repartition the entries so that each partition contains a row @done (14-11-08 22:31)
   ✔ Do a "reduce" operation on each partition, and then a "collect" operation over all the partitions. @done (14-11-08 22:31)
-  ☐ Optimize the routines for symmetric multiplication, and a partition so that each processor has a subset of the rows.
+  ✔ Optimize the routines for symmetric multiplication, and a partition so that each processor has a subset of the rows. @done (14-11-13 11:15)
   ✔ Test with medium size matrix(nnz = 10000), and large matrices, possibly(nnz = 100000) @done (14-11-08 23:36)
   ☐ Test on Edison by remote connection @Important
 
@@ -45,7 +43,10 @@ Project Week 3:
       It seems that the most expensive operation is the "map", that's because for each coordinate I did a "match" operation
       Performance is expected to improve if I know the type beforehand, i.e use implicit num ops
 Project Week 4:
-  ☐ Optimize the code, repartition should happen on input data, that is Entries: RDD[MatrixEntry] when reading the matrix in
+  ✔ Optimize the code, repartition should happen on input data, that is Entries: RDD[MatrixEntry] when reading the matrix in @done (14-11-11 17:48)
+  ✔ Define a "rowForm" and a "colForm" members of the class, each is a repartition of data according to row/col respectively @done (14-11-11 20:51)
+    However, the level of parallelism is not configured yet, it depends on the number of processors in the cluster
+  ☐ Try to do the local multiplication using Breeze sparse routines
   ☐ Performance comparison (recording)
   ☐ Implement CSR format, there are two ways to go about it, local and global.
   ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional

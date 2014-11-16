@@ -14,24 +14,25 @@ class TimingSuite extends FunSuite with LocalSparkContext{
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
     }
 
-    test("Timing on bfw398a.mtx"){
+    test("Timing on bfw398a.mtx, tested with new partition"){
         new TestEnv{
-            sc = new SparkContext("local", "test")
+            sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(0))
+            val matrix = IOobject.readMatrix(filesReal(0), 4)
             val length = matrix.numCols
+            //matrix.rowForm.collect.foreach(println)
             
             val vector = SparseUtility.randomVector(0, 1, length)
             val temp = matrix multiply(vector, sc)
 
-            val start = System.currentTimeMillis
-            val sparkResult = matrix multiply(vector, sc)
-            val end = System.currentTimeMillis
-
             
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
+
+            val start = System.currentTimeMillis
+            val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
 
             val result = DenseVector(sparkResult.toArray)
 
@@ -46,10 +47,10 @@ class TimingSuite extends FunSuite with LocalSparkContext{
 
     test("Timing on cry2500.mtx"){
         new TestEnv{
-            sc = new SparkContext("local", "test")
+            sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(1))
+            val matrix = IOobject.readMatrix(filesReal(1), 4)
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)

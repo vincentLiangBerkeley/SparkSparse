@@ -47,29 +47,17 @@ class CoordinateMatrix(
   def this(entries: RDD[MatrixEntry], partNum: Int) = this(entries, 0L, 0L, false, partNum)
   def this(entries: RDD[MatrixEntry], sym: Boolean, partNum: Int) = this(entries, 0L, 0L, sym, partNum)
 
-  // Transform the entries to RDD[(index, SparseVector)] as a row index and the row
+  /**
+   * The rowForm of a matrix is a collection of rows with index and a SparseVector
+   * @type {RDD[(Long, SparseVector[Double])]}
+   */
   val rowForm = toSparseRowVectors(entries.map(entry => (entry.i, (entry.j.toInt, entry.value)))).persist
+
+  /**
+   * The colForm of a matrix is the rowForm of the transpose
+   * @type {RDD[(Long, SparseVector[Double])]}
+   */
   val colForm = toSparseRowVectors(entries.map(entry => (entry.j, (entry.i.toInt, entry.value)))).persist
-
-  private def toSparseRowVectors(matrix: RDD[(Long, (Int, Double))]): RDD[(Long, SparseVector[Double])] = {
-    matrix.groupByKey(new spark.HashPartitioner(partNum)).map{
-      case(key, value) => 
-        val sortedPairs = value.toArray.sortWith((v1, v2) => v1._1 < v2._1)
-        val len = sortedPairs.size
-        val index = new Array[Int](len)
-        val elems = new Array[Double](len)
-
-        for( i <- 0 until len) {
-          index(i) = sortedPairs(i)._1
-          elems(i) = sortedPairs(i)._2
-        }
-
-        val sp = new SparseVector(index, elems, len, numCols.toInt)
-        (key, sp)
-    }
-  }
-
-  //val rowForm = entries.map(entry => (entry.i, (entry.j.toInt, entry.value))).partitionBy(new spark.HashPartitioner(partNum)).persist
 
   /** Gets or computes the number of columns. */
   override def numCols(): Long = {
@@ -147,6 +135,26 @@ class CoordinateMatrix(
    */
   def toRowMatrix(): RowMatrix = {
     this.toIndexedRowMatrix().toRowMatrix()
+  }
+
+  // Transform each row of the matrix as a tuple (rowIndex, SparseVector)
+  // But this is indeed just a labeled point, why bother using COO matrix?
+  private def toSparseRowVectors(matrix: RDD[(Long, (Int, Double))]): RDD[(Long, SparseVector[Double])] = {
+    matrix.groupByKey(new spark.HashPartitioner(partNum)).map{
+      case(key, value) => 
+        val sortedPairs = value.toArray.sortWith((v1, v2) => v1._1 < v2._1)
+        val len = sortedPairs.size
+        val index = new Array[Int](len)
+        val elems = new Array[Double](len)
+
+        for( i <- 0 until len) {
+          index(i) = sortedPairs(i)._1
+          elems(i) = sortedPairs(i)._2
+        }
+
+        val sp = new SparseVector(index, elems, len, numCols.toInt)
+        (key, sp)
+    }
   }
 
   /** Determines the size by computing the max row/column index. */

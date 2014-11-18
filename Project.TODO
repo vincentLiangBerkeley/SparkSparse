@@ -46,7 +46,15 @@ Project Week 4:
   ✔ Optimize the code, repartition should happen on input data, that is Entries: RDD[MatrixEntry] when reading the matrix in @done (14-11-11 17:48)
   ✔ Define a "rowForm" and a "colForm" members of the class, each is a repartition of data according to row/col respectively @done (14-11-11 20:51)
     However, the level of parallelism is not configured yet, it depends on the number of processors in the cluster
-  ☐ Try to do the local multiplication using Breeze sparse routines
-  ☐ Performance comparison (recording)
-  ☐ Implement CSR format, there are two ways to go about it, local and global.
+  ✔ Try to do the local multiplication using Breeze sparse routines @done (14-11-15 22:19)
+    The performance is improved a lot by doing this
+  ☐ Try to handle the "pattern" format
+  ✔ Implement CSR format, there are two ways to go about it, local and global. @done (14-11-18 00:11)
+    1. Partition as subsets of rows
+    2. Map each partition to a local breeze.CSCMatrix @Difficult
   ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional
+Project Week 5:
+  ☐ Implement the multiplication routine on CSR matrix
+    Current problem is that the matrix does not seem to capture the last column of input data
+  ☐ Test basic cases on current CSR implementation 
+  ☐ Figure out how to test codes on Edison system

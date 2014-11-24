@@ -27,11 +27,45 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
 
         entryField match {
             case "real" | "integer" => 
-                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, x(2).toDouble))
+                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
                 new CoordinateMatrix(entries, size._1, size._2, sym, partNum)
             case "pattern" => 
-                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toInt - 1, 1.0))
+                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toLong - 1, 1.0))
                 new CoordinateMatrix(entries, size._1, size._2, sym, partNum)
+        }
+    }
+
+    def readMatrixGraph(name: String): GraphMatrix = {
+        val info = parseMatrix(name)
+        val entryField = info.entryField
+        val sym = info.sym
+        val data = info.entries
+        val size = info.size
+
+        entryField match {
+            case "real" | "integer" => 
+                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
+                new GraphMatrix(entries, size._1, size._2)
+            case "pattern" => 
+                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, 1.0))
+                new GraphMatrix(entries, size._1, size._2)
+        }
+    }
+
+    def readMatrixCSC(name: String, partNum: Int = 4): CSRMatrix = {
+        val info = parseMatrix(name)
+        val entryField = info.entryField
+        val sym = info.sym
+        val data = info.entries
+        val size = info.size
+
+        entryField match {
+            case "real" | "integer" => 
+                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
+                new CSRMatrix(entries, size._1, size._2, sym, partNum)
+            case "pattern" => 
+                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, 1.0))
+                new CSRMatrix(entries, size._1, size._2, sym, partNum)
         }
     }
 

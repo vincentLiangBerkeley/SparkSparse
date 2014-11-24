@@ -84,6 +84,8 @@ class CoordinateMatrix(
     @Param(Optional) "trans": A boolean variable indicating the "trans" of multiplication, by default is "false", meaning on the right
     x = A * v (if trans = false)
     x = A' * v (if trans = true)
+
+    This multiplication has one problem is that the output is a spark.linalg.Vector, which has size Int, but the numRows has size Long
   */
   def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
     require(numRows < Int.MaxValue && numCols < Int.MaxValue, "Cannot multiply this matrix because size is too large!")

@@ -56,10 +56,17 @@ Project Week 4:
 Project Week 5:
   ✔ Implement the multiplication routine on CSR matrix @done (14-11-18 16:41)
     Current problem is that the matrix does not seem to capture the last column of input data
-  ☐ Partition the input matrix into even smaller blocks and store them
+  ☐ Partition the input matrix into even smaller blocks and store them(2D partition)
     Problem is that this could be potentially inefficient because we are multiplying with part of the vector as well
   ☐ A potential problem now is that numRows of the matrix is type Long, but the output is obtained by "collect" which is an array.
-  ☐ Try to use GraphX's MapReduce triglets function to do the multiplication
+    Solved with a new class Vector, that supports collect and saveAsTextFile
+  ✔ Try to use GraphX's MapReduce triglets function to do the multiplication @done (14-11-24 16:12)
+    Current partition is not as efficient
   ✔ Test basic cases on current CSR implementation  @done (14-11-23 17:41)
+  ☐ Possible optimization is to partition the matrix so that each partition has roughly the same number of nonzeros
 Project Week6:
   ☐ Figure out how to test codes on Edison system
+  ☐ Read the three papers on partitioning
+    1. Hypergraph-partitioning based decomposition
+    2. On two dimensional sparse matrix partitioning
+    3. A nested disection approach to sparse matrix 

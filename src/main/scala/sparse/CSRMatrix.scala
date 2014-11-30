@@ -23,8 +23,8 @@ class CSRMatrix(
     private val partNum: Int = 4) extends DistributedMatrix {
     
     def this(entries: RDD[(Long, Long, Double)]) = this(entries, 0L, 0L)
-    val localCSC = toLocalCSC(entries.map{case(i, j, value) => (i, (j.toInt, value))}).persist
-
+    val rowForm = toLocalCSC(entries.map{case(i, j, value) => (i, (j.toInt, value))}, false).persist
+    val colForm = toLocalCSC(entries.map{case(i, j, value) => (j, (i.toInt, value))}, true).persist
     /** Gets or computes the number of columns. */
     override def numCols(): Long = {
       if (nCols <= 0L) {
@@ -41,32 +41,56 @@ class CSRMatrix(
       nRows
     }
 
-    def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = partNum): Vector = {
+    def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): Vector = {
+        // Check for sizes of multiplication
+        if(trans) require(vector.size == numRows.toInt, "Matrix-vector size mismatch!")
+        else require(vector.size == numCols.toInt, "Matrix-vector size mismatch!")
+
         val copies = sc.broadcast(vector.toArray)
         val v = DenseVector(copies.value)
 
-        val result = localCSC.map{
-            case(arr, mat) =>
-                val partialVec = (mat * v)
-                arr zip partialVec.toArray
-        }.collect.flatten
+        if(!sym){
+            val matrix = if(trans) colForm else rowForm
 
-        SparseUtility.transform(result, numRows.toInt)
+            val result = matrix.map{
+            case(arr, mat) =>
+                val partialVec = mat * v
+                arr zip partialVec.toArray
+            }.collect.flatten
+             if (trans) SparseUtility.transform(result, numCols.toInt)   
+            else SparseUtility.transform(result, numRows.toInt)
+        }else{
+            val first = rowForm.map{
+                case (arr, mat) => 
+                    var partialVec = mat * v
+                    for( i <- 0 until arr.length) {
+                        partialVec(i) = partialVec(i) - mat(i, arr(i).toInt) * v(arr(i).toInt)
+                    }
+                    arr zip partialVec.toArray
+            }.collect.flatten
+            val second = colForm.map{
+             case(arr, mat) =>
+                val partialVec = mat * v
+                arr zip partialVec.toArray
+            }.collect.flatten
+            val result = first ++ second
+             if (trans) SparseUtility.transform(result, numCols.toInt)   
+            else SparseUtility.transform(result, numRows.toInt)
+        }      
     }
 
     // Internally it stores as an RDD of (rows, BCM)
-    private def toLocalCSC(entries: RDD[(Long, (Int, Double))]) = {
+    private def toLocalCSC(entries: RDD[(Long, (Int, Double))], trans: Boolean) = {
+        val minorSize = if(trans) numRows.toInt else numCols.toInt
         entries.groupByKey(new spark.HashPartitioner(partNum)).mapPartitionsWithIndex{
             case (ind, iter) => 
                 // Doing size = iter.size will cause the iterator to iterate to the end and lose all information
                 val allRows = iter.toArray
                 val size = allRows.size
-                val builder = new BCM.Builder[Double](size, numCols.toInt)
+                val builder = new BCM.Builder[Double](size, minorSize)
                 val rowIndeces = new Array[Long](size)
                 for(i <- 0 until size) {
                     val row = allRows(i) // This is a tuple (Long, Seq[(Int, Double)])
-                    //System.out.println("Current row index is " + row._1 + " and current partition index is " + ind 
-                    //    + " so the local index should be " + localRowIndex)
                     rowIndeces(i) = row._1 // Record the row index
                     val rowEntries = row._2.toArray
                     for( j <- 0 until rowEntries.size) {

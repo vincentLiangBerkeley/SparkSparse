@@ -19,7 +19,8 @@ import org.apache.spark.mllib.linalg.{Vectors,Vector}
 class GraphMatrix(
     val entries: RDD[(Long, Long, Double)],
     val numRows: Long,
-    val numCols: Long
+    val numCols: Long,
+    private val partNum: Int
     ) {
     
     // Currently only support square matrices
@@ -29,7 +30,10 @@ class GraphMatrix(
     private val vertices: RDD[(VertexId, Double)] = entries.map{case(i, j, value) => (i, 0.0)}
     // Edges represent nonzero entries
     // We can partition the edges so that edges with the same srcId are together
-    private val edges: RDD[Edge[Double]] = entries.map{case(i, j, value) => Edge(i, j, value)}
+    private val edges: RDD[Edge[Double]] = entries.map{case(i, j, value) => (i, (j, value))}
+                                            .partitionBy(new HashPartitioner(partNum))
+                                            .map{case(key, value) => new Edge(key, value._1, value._2)}
+                                            .cache()
 
     val graphMatrix: Graph[Double, Double] = Graph(vertices, edges).cache()
 

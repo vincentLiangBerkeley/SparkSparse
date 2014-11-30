@@ -23,9 +23,8 @@ case class MatrixEntry(i: Long, j: Long, value: Double)
 
 /**
  * :: Experimental ::
- * Represents a matrix in coordinate format.
+ * Represents a matrix in coordinate format, assumes that the minor size is within the range of Int
  *
- * @param E type parameter, could be Double, Int Boolean
  * @param entries matrix entries
  * @param nRows number of rows. A non-positive value means unknown, and then the number of rows will
  *              be determined by the max row index plus one.

@@ -8,13 +8,13 @@ import org.apache.log4j.Logger
 
 class CSCSuite() extends FunSuite with LocalSparkContext {
     trait TestEnv{
-        val filesReal = List("bfw398a.mtx", "cry2500.mtx", "fidapm05.mtx", "pores_1.mtx", "mcca.mtx")
+        val filesReal = List("bfw398a.mtx", "cry2500.mtx", "bcspwr04.mtx", "fidapm05.mtx", "pores_1.mtx", "mcca.mtx")
         val filePath = "/Users/Vincent/Documents/GSI/MATH221/Project/SparkSparse/"  
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
     }
 
-    test("Timing on bfw398a.mtx"){
+    test("Testing on bfw398a.mtx"){
         new TestEnv{
             sc = new SparkContext("local[4]", "test")
             
@@ -31,18 +31,21 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
                 val start = System.currentTimeMillis
                 val sparkResult = matrix multiply(vector, sc)
                 val end = System.currentTimeMillis
+
+                val result = DenseVector(sparkResult.toArray)
+                assert(max(result - localMatrix * localVector) < 0.0001)
                 System.out.println("The running time is " + (end - start) + "ms.")
             }
 
         }
     }
 
-    test("Timing on cry2500.mtx"){
+    test("Testing on cry2500.mtx"){
         new TestEnv{
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrixCSC(filesReal(1), 8)
+            val matrix = IOobject.readMatrixCSC(filesReal(1), 12)
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -53,6 +56,65 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             val end = System.currentTimeMillis
 
             
+            val localMatrix = matrix.toBreeze
+            val localVector = DenseVector(vector.toArray)
+
+            val result = DenseVector(sparkResult.toArray)
+
+            val startLoal = System.currentTimeMillis
+            assert(max(result - localMatrix * localVector) < 0.0001)
+            val endLocal = System.currentTimeMillis
+
+            System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
+        }
+    }
+
+    test("Testing on cry2500.mtx with transpose"){
+        new TestEnv{
+            sc = new SparkContext("local[4]", "test")
+            
+            val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
+            val matrix = IOobject.readMatrixCSC(filesReal(1), 12)
+            val length = matrix.numRows
+            
+            val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc, true)
+
+            val start = System.currentTimeMillis
+            val sparkResult = matrix multiply(vector, sc, true)
+            val end = System.currentTimeMillis
+
+            
+            val localMatrix = matrix.toBreeze
+            val localVector = DenseVector(vector.toArray)
+
+            val result = DenseVector(sparkResult.toArray)
+
+            val startLoal = System.currentTimeMillis
+            assert(max(result - localMatrix.t * localVector) < 0.0001)
+            val endLocal = System.currentTimeMillis
+
+            System.out.println("The running time is " + (end - start) + "ms.")
+            System.out.println("The local running time is " + (endLocal - startLoal) + "ms")
+        }
+    }
+
+    test("Testing bcspwr04.mtx, pattern symmetric matrix"){
+        new TestEnv{
+            sc = new SparkContext("local[4]", "test")
+            
+            val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
+            val matrix = IOobject.readMatrix(filesReal(2), 8)
+            val length = matrix.numCols
+            
+            val vector = SparseUtility.randomVector(0, 1, length)
+            val temp = matrix multiply(vector, sc)
+
+            val start = System.currentTimeMillis
+            val sparkResult = matrix multiply(vector, sc)
+            val end = System.currentTimeMillis
+
             val localMatrix = matrix.toBreeze
             val localVector = DenseVector(vector.toArray)
 

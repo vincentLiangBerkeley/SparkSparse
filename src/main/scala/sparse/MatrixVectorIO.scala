@@ -18,7 +18,7 @@ import java.io._
 case class MatrixInfo(entryField: String, size: (Long, Long), sym: Boolean, entries: RDD[Array[String]])
 
 class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
-    def readMatrix(name: String, partNum: Int = 1): CoordinateMatrix = {
+    def readMatrix(name: String, partNum: Int = 4): CoordinateMatrix = {
         val info = parseMatrix(name)
         val entryField = info.entryField
         val sym = info.sym
@@ -35,7 +35,7 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
         }
     }
 
-    def readMatrixGraph(name: String): GraphMatrix = {
+    def readMatrixGraph(name: String, partNum: Int = 4): GraphMatrix = {
         val info = parseMatrix(name)
         val entryField = info.entryField
         val sym = info.sym
@@ -45,10 +45,10 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
         entryField match {
             case "real" | "integer" => 
                 val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
-                new GraphMatrix(entries, size._1, size._2)
+                new GraphMatrix(entries, size._1, size._2, partNum)
             case "pattern" => 
                 val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, 1.0))
-                new GraphMatrix(entries, size._1, size._2)
+                new GraphMatrix(entries, size._1, size._2, partNum)
         }
     }
 

@@ -1,0 +1,22 @@
+package sparse
+
+import breeze.linalg.DenseVector
+class LongVector(input: RDD[Long, Double]) {
+    val entries = input.cache
+
+    def collect: Array[Double] = SparseUtility.transform(entries).toArray
+    def saveAsTextFile(path: String) = entries.saveAsTextFile(path)
+    
+    val length = entries.count
+    val breezeForm = DenseVector(this.collect)
+
+    def dot(that: LongVector): Double = {
+        require(this.length == that.length, "Vectors must have the same length!")
+        if (this.length < Int.MaxValue){
+            this.breezeForm * that.breezeForm
+        }else{ // If the vectors are too long, have to do it by map reduce
+            
+        }
+    }
+
+}

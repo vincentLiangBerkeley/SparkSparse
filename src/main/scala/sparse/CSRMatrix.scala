@@ -14,17 +14,17 @@ import org.apache.spark.mllib.linalg.distributed._
 
 
 @Experimental
-// TODO: This class does not support symmetric matrix now, should add support
 class CSRMatrix(
     val entries: RDD[(Long, Long, Double)],
     private var nRows: Long,
     private var nCols: Long,
     private val sym: Boolean = false, 
-    private val partNum: Int = 4) extends DistributedMatrix {
+    private val partNum: Int = 4) extends DistributedMatrix with Multipliable {
     
     def this(entries: RDD[(Long, Long, Double)]) = this(entries, 0L, 0L)
     val rowForm = toLocalCSC(entries.map{case(i, j, value) => (i, (j.toInt, value))}, false).persist
     val colForm = toLocalCSC(entries.map{case(i, j, value) => (j, (i.toInt, value))}, true).persist
+
     /** Gets or computes the number of columns. */
     override def numCols(): Long = {
       if (nCols <= 0L) {
@@ -73,14 +73,19 @@ class CSRMatrix(
                 val partialVec = mat * v
                 arr zip partialVec.toArray
             }.collect.flatten
+
+            // Concatenate the two results
             val result = first ++ second
              if (trans) SparseUtility.transform(result, numCols.toInt)   
             else SparseUtility.transform(result, numRows.toInt)
         }      
     }
 
+    //private def mapMultiply(matrix: RDD[(Array[Double], BCM[Double])], v: Array[Double]): RDD[(Long, Double)]
+
+
     // Internally it stores as an RDD of (rows, BCM)
-    private def toLocalCSC(entries: RDD[(Long, (Int, Double))], trans: Boolean) = {
+    private def toLocalCSC(entries: RDD[(Long, (Int, Double))], trans: Boolean): RDD[(Array[Long], BCM[Double])] = {
         val minorSize = if(trans) numRows.toInt else numCols.toInt
         entries.groupByKey(new spark.HashPartitioner(partNum)).mapPartitionsWithIndex{
             case (ind, iter) => 

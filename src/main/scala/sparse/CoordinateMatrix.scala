@@ -23,7 +23,7 @@ case class MatrixEntry(i: Long, j: Long, value: Double)
 
 /**
  * :: Experimental ::
- * Represents a matrix in coordinate format, assumes that the minor size is within the range of Int
+ * Represents a matrix in coordinate format, assumes that the minor size is within the range of Int.
  *
  * @param entries matrix entries
  * @param nRows number of rows. A non-positive value means unknown, and then the number of rows will
@@ -38,7 +38,7 @@ class CoordinateMatrix(
     private var nRows: Long,
     private var nCols: Long,
     private val sym: Boolean = false,
-    private val partNum: Int = 1) extends DistributedMatrix {
+    private val partNum: Int = 1) extends DistributedMatrix with Multipliable {
 
   /** Alternative constructor leaving matrix dimensions to be determined automatically. */
   def this(entries: RDD[MatrixEntry]) = this(entries, 0L, 0L)
@@ -86,7 +86,7 @@ class CoordinateMatrix(
 
     This multiplication has one problem is that the output is a spark.linalg.Vector, which has size Int, but the numRows has size Long
   */
-  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false, numTasks: Int = 4): Vector = {
+  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): Vector = {
     require(numRows < Int.MaxValue && numCols < Int.MaxValue, "Cannot multiply this matrix because size is too large!")
     require(vector.size == numCols.toInt, "Matrix vector size mismatch!")
     val copies = sc.broadcast(vector.toArray)

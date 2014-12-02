@@ -65,9 +65,11 @@ Project Week 5:
   ☐ Possible optimization is to partition the matrix so that each partition has roughly the same number of nonzeros
     Also in the collection of partitioning problems. 
 Project Week7 :
-  ☐ Figure out how to test codes on Edison system
+  ✔ Figure out how to test codes on Edison system @done (14-12-01 23:04)
   ☐ Read the three papers on partitioning
     1. Hypergraph-partitioning based decomposition
     2. On two dimensional sparse matrix partitioning
     3. A nested disection approach to sparse matrix 
   ☐ Also need a new class to capture result (large vectors)
+    1. This class has to support element-wise operations
+    2. This class has to also support dot operations

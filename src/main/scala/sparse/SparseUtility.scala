@@ -4,6 +4,7 @@ import org.apache.spark
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
+import scala.math
 import java.util.Random
 
 object SparseUtility {

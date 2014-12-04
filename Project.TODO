@@ -70,6 +70,7 @@ Project Week7 :
     1. Hypergraph-partitioning based decomposition
     2. On two dimensional sparse matrix partitioning
     3. A nested disection approach to sparse matrix 
-  ☐ Also need a new class to capture result (large vectors)
+  ✔ Also need a new class to capture result (large vectors) @done (14-12-03 23:12)
     1. This class has to support element-wise operations
     2. This class has to also support dot operations
+  ☐ But the problem is that if we use this longVector class, the multiplication is super slow, both the map and collect time

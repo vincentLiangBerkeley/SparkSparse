@@ -19,7 +19,7 @@ class TimingSuite extends FunSuite with LocalSparkContext{
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(0), 4)
+            val matrix = IOobject.readMatrix(filesReal(0), "COO", 4)
             val length = matrix.numCols
             //matrix.rowForm.collect.foreach(println)
             
@@ -27,7 +27,7 @@ class TimingSuite extends FunSuite with LocalSparkContext{
             val temp = matrix multiply(vector, sc)
 
             
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val start = System.currentTimeMillis
@@ -50,7 +50,7 @@ class TimingSuite extends FunSuite with LocalSparkContext{
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(1), 4)
+            val matrix = IOobject.readMatrix(filesReal(1), "COO", 4)
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -61,7 +61,7 @@ class TimingSuite extends FunSuite with LocalSparkContext{
             val end = System.currentTimeMillis
 
             
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)

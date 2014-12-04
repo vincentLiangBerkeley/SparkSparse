@@ -10,20 +10,19 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.{Vectors,Vector}
-import org.apache.spark.mllib.linalg.distributed._
 
 
 @Experimental
-class CSRMatrix(
-    val entries: RDD[(Long, Long, Double)],
+class CSCMatrix(
+    val entries: RDD[MatrixEntry],
     private var nRows: Long,
     private var nCols: Long,
-    private val sym: Boolean = false, 
-    private val partNum: Int = 4) extends DistributedMatrix with Multipliable {
+    protected val sym: Boolean = false, 
+    private val partNum: Int = 4) extends Multipliable {
     
-    def this(entries: RDD[(Long, Long, Double)]) = this(entries, 0L, 0L)
-    val rowForm = toLocalCSC(entries.map{case(i, j, value) => (i, (j.toInt, value))}, false).persist
-    val colForm = toLocalCSC(entries.map{case(i, j, value) => (j, (i.toInt, value))}, true).persist
+    def this(entries: RDD[MatrixEntry]) = this(entries, 0L, 0L)
+    private val rowForm = toLocalCSC(entries.map(entry => (entry.i, (entry.j.toInt, entry.value))), false).persist
+    private val colForm = toLocalCSC(entries.map(entry => (entry.j, (entry.i.toInt, entry.value))), true).persist
 
     /** Gets or computes the number of columns. */
     override def numCols(): Long = {
@@ -41,7 +40,7 @@ class CSRMatrix(
       nRows
     }
 
-    def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): Vector = {
+    def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
         // Check for sizes of multiplication
         if(trans) require(vector.size == numRows.toInt, "Matrix-vector size mismatch!")
         else require(vector.size == numCols.toInt, "Matrix-vector size mismatch!")
@@ -52,32 +51,32 @@ class CSRMatrix(
         if(!sym){
             val matrix = if(trans) colForm else rowForm
 
-            val result = matrix.map{
+            val result = matrix.flatMap{
             case(arr, mat) =>
                 val partialVec = mat * v
                 arr zip partialVec.toArray
-            }.collect.flatten
-             if (trans) SparseUtility.transform(result, numCols.toInt)   
-            else SparseUtility.transform(result, numRows.toInt)
+            }
+            new LongVector(result)
         }else{
-            val first = rowForm.map{
+            // This is inefficient because we have to do the communication twice
+            // Question: Can we do this only once?
+            val first = rowForm.flatMap{
                 case (arr, mat) => 
                     var partialVec = mat * v
                     for( i <- 0 until arr.length) {
                         partialVec(i) = partialVec(i) - mat(i, arr(i).toInt) * v(arr(i).toInt)
                     }
                     arr zip partialVec.toArray
-            }.collect.flatten
-            val second = colForm.map{
+            }
+            val second = colForm.flatMap{
              case(arr, mat) =>
                 val partialVec = mat * v
                 arr zip partialVec.toArray
-            }.collect.flatten
+            }
 
-            // Concatenate the two results
-            val result = first ++ second
-             if (trans) SparseUtility.transform(result, numCols.toInt)   
-            else SparseUtility.transform(result, numRows.toInt)
+            val result = (first join second).mapValues{case (v1, v2) => v1 + v2}
+
+            new LongVector(result)
         }      
     }
 
@@ -85,6 +84,7 @@ class CSRMatrix(
 
 
     // Internally it stores as an RDD of (rows, BCM)
+    // Partitioner here needs to be careful
     private def toLocalCSC(entries: RDD[(Long, (Int, Double))], trans: Boolean): RDD[(Array[Long], BCM[Double])] = {
         val minorSize = if(trans) numRows.toInt else numCols.toInt
         entries.groupByKey(new spark.HashPartitioner(partNum)).mapPartitionsWithIndex{
@@ -113,7 +113,7 @@ class CSRMatrix(
     /** Determines the size by computing the max row/column index. */
     private def computeSize() {
         // Reduce will throw an exception if `entries` is empty.
-        val (m1, n1) = entries.map(entry => (entry._1, entry._2)).reduce { case ((i1, j1), (i2, j2)) =>
+        val (m1, n1) = entries.map(entry => (entry.i, entry.j)).reduce { case ((i1, j1), (i2, j2)) =>
           (math.max(i1, i2), math.max(j1, j2))
         }
         // There may be empty columns at the very right and empty rows at the very bottom.
@@ -129,7 +129,7 @@ class CSRMatrix(
       val m = numRows().toInt
       val n = numCols().toInt
       val mat = BDM.zeros[Double](m, n)
-      entries.collect().foreach { case(i, j, value) =>
+      entries.collect().foreach { case MatrixEntry(i, j, value) =>
         mat(i.toInt, j.toInt) = value
         if (sym) mat(j.toInt, i.toInt) = value
       }

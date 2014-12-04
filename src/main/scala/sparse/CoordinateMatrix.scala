@@ -37,8 +37,8 @@ class CoordinateMatrix(
     val entries: RDD[MatrixEntry],
     private var nRows: Long,
     private var nCols: Long,
-    private val sym: Boolean = false,
-    private val partNum: Int = 1) extends DistributedMatrix with Multipliable {
+    protected val sym: Boolean = false,
+    private val partNum: Int = 1) extends Multipliable {
 
   /** Alternative constructor leaving matrix dimensions to be determined automatically. */
   def this(entries: RDD[MatrixEntry]) = this(entries, 0L, 0L)
@@ -50,13 +50,13 @@ class CoordinateMatrix(
    * The rowForm of a matrix is a collection of rows with index and a SparseVector
    * @type {RDD[(Long, SparseVector[Double])]}
    */
-  val rowForm = toSparseRowVectors(entries.map(entry => (entry.i, (entry.j.toInt, entry.value)))).persist
+  private val rowForm = toSparseRowVectors(entries.map(entry => (entry.i, (entry.j.toInt, entry.value)))).persist
 
   /**
    * The colForm of a matrix is the rowForm of the transpose
    * @type {RDD[(Long, SparseVector[Double])]}
    */
-  val colForm = toSparseRowVectors(entries.map(entry => (entry.j, (entry.i.toInt, entry.value)))).persist
+  private val colForm = toSparseRowVectors(entries.map(entry => (entry.j, (entry.i.toInt, entry.value)))).persist
 
   /** Gets or computes the number of columns. */
   override def numCols(): Long = {
@@ -86,25 +86,26 @@ class CoordinateMatrix(
 
     This multiplication has one problem is that the output is a spark.linalg.Vector, which has size Int, but the numRows has size Long
   */
-  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): Vector = {
+  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
     require(numRows < Int.MaxValue && numCols < Int.MaxValue, "Cannot multiply this matrix because size is too large!")
     require(vector.size == numCols.toInt, "Matrix vector size mismatch!")
     val copies = sc.broadcast(vector.toArray)
     val v = DenseVector(copies.value)
 
     if(!sym){
-      val vectorArray = if (trans) colForm.map{case(ind, sp) => (ind, sp dot v)}.collect
-                        else rowForm.map{case(ind, sp) => (ind, sp dot v)}.collect
-      if (trans) SparseUtility.transform(vectorArray, numCols.toInt)
-      else SparseUtility.transform(vectorArray, numRows.toInt)
+      val vectorArray: RDD[(Long, Double)] = if (trans) colForm.map{case(ind, sp) => (ind, sp dot v)}
+                                            else rowForm.map{case(ind, sp) => (ind, sp dot v)}
+                                            
+      new LongVector(vectorArray)
     }else{
       // Notice that a symmetric matrix must be square
       // So we compute Ay + (A - diag(A))^Ty
-      val first = rowForm.map{case(ind, sp) => (ind, sp dot v)}.collect
-      val second = colForm.map{case(ind, sp) => (ind, sp.dot(v) - sp(ind.toInt) * v(ind.toInt))}.collect
+      val first = rowForm.map{case(ind, sp) => (ind, sp dot v)}
+      val second = colForm.map{case(ind, sp) => (ind, sp.dot(v) - sp(ind.toInt) * v(ind.toInt))}
 
-      val result = first ++ second
-      SparseUtility.transform(result, numRows.toInt)
+      val vectorArray = (first join second).mapValues{case(v1, v2) => v1 + v2}
+      
+      new LongVector(vectorArray)
     }
   }
 

@@ -29,7 +29,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
@@ -59,7 +59,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
@@ -89,7 +89,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
@@ -119,7 +119,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)
@@ -148,7 +148,7 @@ class CooMatSuite extends FunSuite with LocalSparkContext{
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = DenseVector(sparkResult.toArray)

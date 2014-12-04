@@ -19,12 +19,12 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrixCSC(filesReal(0), 8)
+            val matrix = IOobject.readMatrix(filesReal(0), "CSC", 8)
             val length = matrix.numCols
 
             val vector = SparseUtility.randomVector(0, 1, length)
             
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             for( i <- 1 to 4) {
@@ -32,7 +32,7 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
                 val sparkResult = matrix multiply(vector, sc)
                 val end = System.currentTimeMillis
 
-                val result = DenseVector(sparkResult.toArray)
+                val result = sparkResult.toBreeze
                 assert(max(result - localMatrix * localVector) < 0.0001)
                 System.out.println("The running time is " + (end - start) + "ms.")
             }
@@ -45,21 +45,21 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrixCSC(filesReal(1), 12)
+            val matrix = IOobject.readMatrix(filesReal(1), "CSC", 12)
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
-            val temp = matrix multiply(vector, sc)
+            val temp = (matrix multiply(vector, sc)).toVector
 
             val start = System.currentTimeMillis
-            val sparkResult = matrix multiply(vector, sc)
+            val r = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
             
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
-            val result = DenseVector(sparkResult.toArray)
+            val result = r.toBreeze
 
             val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)
@@ -75,7 +75,7 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrixCSC(filesReal(1), 12)
+            val matrix = IOobject.readMatrix(filesReal(1), "CSC", 12)
             val length = matrix.numRows
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -86,10 +86,10 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             val end = System.currentTimeMillis
 
             
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
-            val result = DenseVector(sparkResult.toArray)
+            val result = sparkResult.toBreeze
 
             val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix.t * localVector) < 0.0001)
@@ -105,7 +105,7 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(2), 8)
+            val matrix = IOobject.readMatrix(filesReal(2),"CSC", 8)
             val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
@@ -115,10 +115,10 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
             val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            val localMatrix = matrix.toBreeze
+            val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
-            val result = DenseVector(sparkResult.toArray)
+            val result = sparkResult.toBreeze
 
             val startLoal = System.currentTimeMillis
             assert(max(result - localMatrix * localVector) < 0.0001)

@@ -16,7 +16,7 @@ object Test {
         var time: Double = 0.0
         for( i <- 1 to numTests) {
             val start = System.currentTimeMillis
-            v = matrix multiply(v, sc)
+            v = (matrix multiply(v, sc)).toVector
             val end = System.currentTimeMillis
             if(i > 1) time += (end - start)
             if(i == 1) System.out.println("Data processing time is " + (end - start) + "ms.")
@@ -26,7 +26,7 @@ object Test {
     }
 
     def main(args: Array[String]): Unit = {
-        val conf = new SparkConf().setAppName("Power Method")
+        val conf = new SparkConf().setAppName("Multiplication Test")
         val sc = new SparkContext(conf)
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
@@ -37,15 +37,15 @@ object Test {
         val filePath = "./matrices/"    
         val IOobject = new MatrixVectorIO(filePath, sc)
 
-        val matrix = IOobject.readMatrix(name)
-        val csc = IOobject.readMatrixCSC(name)
+        val coo = IOobject.readMatrix(name, 8)
+        val csc = IOobject.readMatrix(name, "CSC", 8)
 
-        val length = matrix.numCols
+        val length = coo.numCols
 
         // Random vector as starting point
         val vector = SparseUtility.randomVector(0, 1, length) 
         System.out.println("Testing multiplication on " + name + " using COO format")
-        testOnce(matrix, vector, sc, numTests)
+        testOnce(coo, vector, sc, numTests)
 
         System.out.println("Testing multiplication on " + name + " using CSC format")
         testOnce(csc, vector, sc, numTests)

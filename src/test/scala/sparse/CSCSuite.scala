@@ -8,7 +8,7 @@ import org.apache.log4j.Logger
 
 class CSCSuite() extends FunSuite with LocalSparkContext {
     trait TestEnv{
-        val filesReal = List("bfw398a.mtx", "cry2500.mtx", "bcspwr04.mtx", "fidapm05.mtx", "pores_1.mtx", "mcca.mtx")
+        val filesReal = List("bfw398a.mtx", "cry2500.mtx", "bcspwr04.mtx", "fidapm05.mtx", "pores_1.mtx", "mcca.mtx", "orani678_b.mtx")
         val filePath = "/Users/Vincent/Documents/GSI/MATH221/Project/SparkSparse/"  
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
@@ -70,29 +70,28 @@ class CSCSuite() extends FunSuite with LocalSparkContext {
         }
     }
 
-    test("Testing on cry2500.mtx with transpose"){
+    test("Testing on orani678_b.mtx"){
         new TestEnv{
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrix(filesReal(1), "CSC", 12)
-            val length = matrix.numRows
+            val matrix = IOobject.readMatrix(filesReal.last, "CSC", 12)
+            val length = matrix.numCols
             
             val vector = SparseUtility.randomVector(0, 1, length)
-            val temp = matrix multiply(vector, sc, true)
+            val temp = matrix multiply(vector, sc)
 
             val start = System.currentTimeMillis
-            val sparkResult = matrix multiply(vector, sc, true)
+            val sparkResult = matrix multiply(vector, sc)
             val end = System.currentTimeMillis
 
-            
             val localMatrix = matrix.toBreezeMat
             val localVector = DenseVector(vector.toArray)
 
             val result = sparkResult.toBreeze
 
             val startLoal = System.currentTimeMillis
-            assert(max(result - localMatrix.t * localVector) < 0.0001)
+            assert(max(result - localMatrix * localVector) < 0.0001)
             val endLocal = System.currentTimeMillis
 
             System.out.println("The running time is " + (end - start) + "ms.")

@@ -16,11 +16,11 @@ object SparseUtility {
     }   
     
     // Extract this routine as a separate function for future usage
-    def transform(vectorArray: Array[(Long, Double)], length: Int): Vector = {
+    def transform(vectorArray: Array[(Long, Double)], length: Int): Array[Double] = {
         val result = new Array[Double](length)
         for (i <- 0 until vectorArray.length){
             result(vectorArray(i)._1.toInt) += vectorArray(i)._2
         }   
-        Vectors.dense(result)
+        result
     }
 }

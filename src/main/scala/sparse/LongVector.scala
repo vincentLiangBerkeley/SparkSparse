@@ -6,9 +6,9 @@ import org.apache.spark.rdd.PairRDDFunctions
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 
-class LongVector(val entries: RDD[(Long, Double)]) {
+class LongVector(val entries: RDD[(Long, Double)], val length: Long) {
     // Values are calculated when you initialize the instance of the class
-    val length: Long = entries.count
+    val activeSize: Long = entries.count
 
     /**
      * The array format of the vector if it is short(< Int.MaxValue)
@@ -16,7 +16,7 @@ class LongVector(val entries: RDD[(Long, Double)]) {
      */
     val arr: Array[Double] = {
         if (length > Int.MaxValue) Array[Double]()
-        else entries.collect.sortWith((v1, v2) => v1._1 < v2._1).map(v => v._2)
+        else SparseUtility.transform(entries.collect, length.toInt)
     }
 
     /**
@@ -67,6 +67,6 @@ class LongVector(val entries: RDD[(Long, Double)]) {
 
     private[sparse] def /(a: Double): LongVector = {
         require(a != 0, "Can't divide the vector by zero!")
-        new LongVector(this.entries.mapValues(v => v / a))
+        new LongVector(this.entries.mapValues(v => v / a), this.length)
     }
 }

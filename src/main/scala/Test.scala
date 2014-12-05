@@ -16,7 +16,7 @@ object Test {
         var time: Double = 0.0
         for( i <- 1 to numTests) {
             val start = System.currentTimeMillis
-            v = (matrix multiply(v, sc)).toVector
+            val result = matrix multiply(v, sc)
             val end = System.currentTimeMillis
             if(i > 1) time += (end - start)
             if(i == 1) System.out.println("Data processing time is " + (end - start) + "ms.")
@@ -31,23 +31,30 @@ object Test {
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)  
 
-        val numTests = if(args.length > 0) args(0).toInt else 20
+        val numTests: Int = if(args.length > 0) args(0).toInt else 20
 
-        val name = if (args.length > 1) args(1) else "cry2500.mtx"
+        val name: String = if (args.length > 1) args(1) else "cry2500.mtx"
+
+        val graphTest: Boolean = if (args.length > 2) args(2) else false
+
         val filePath = "./matrices/"    
         val IOobject = new MatrixVectorIO(filePath, sc)
 
+        System.out.println("Testing multiplication on " + name + " using COO format")
         val coo = IOobject.readMatrix(name, 8)
-        val csc = IOobject.readMatrix(name, "CSC", 8)
-
         val length = coo.numCols
-
         // Random vector as starting point
         val vector = SparseUtility.randomVector(0, 1, length) 
-        System.out.println("Testing multiplication on " + name + " using COO format")
         testOnce(coo, vector, sc, numTests)
 
         System.out.println("Testing multiplication on " + name + " using CSC format")
+        val csc = IOobject.readMatrix(name, "CSC", 8)
         testOnce(csc, vector, sc, numTests)
+
+        if (graphTest){
+            System.out.println("Testing multiplication on " + name + " using Graph format")
+            val gm = IOobject.readMatrixGraph(name, 8)
+            testOnce(gm, vector, sc, numTests)
+        }  
     }
 }

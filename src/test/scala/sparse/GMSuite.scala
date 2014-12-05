@@ -19,7 +19,7 @@ class GMSuite() extends FunSuite with LocalSparkContext {
             sc = new SparkContext("local[4]", "test")
             
             val IOobject = new MatrixVectorIO(filePath + "matrices/", sc)
-            val matrix = IOobject.readMatrixGraph(filesReal(0), 8)
+            val matrix = IOobject.readMatrixGraph(filesReal(1), 8)
             val length = matrix.numCols
 
             val vector = SparseUtility.randomVector(0, 1, length)

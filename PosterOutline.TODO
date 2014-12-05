@@ -1,0 +1,48 @@
+Key Assumptions Made:
+  ☐ Matrix has possibly large number of rows(Long), but comparatively small number of cols(Int)
+  ☐ The vectors to be multiplied are dense local vectors(size Int)
+  ☐ Input matrix is stored using MatrixMarket format without overhead
+
+Matrix Storage Formats:
+  Coordinate Matrix:
+    ☐ This format stores a list(RDD) of coordinates of type (Long, Long, Double)
+    ☐ Multiplication: 
+      1. Treat the matrix as a set of rows, where each row is a SparseVector
+      2. Partition the rows evenly using HashPartitioner, so each partition has a subset of the rows and persist the RDD
+      3. On each partition, do several dot products of the SparseVector and DenseVector
+      4. Collect the the result from all processors to master
+    ☐ Reasons for doing this:
+      1. Each partition contains a sub matrix and compute locally to obtain subset of the result, without communicating
+      2. Local dot products use breeze.linalg library methods to speedup
+      3. Partition requires communication across the the cluster(System)
+
+  Compressed Sparse Column Matrix(CSC):
+    ☐ This format stores CSC matrices locally and an array of the corresponding rows
+    ☐ Multiplication:
+      1. 1-D partition the rows of the matrix to different processors
+      2. On each processor, convert the subset of the rows in to a CSC matrix
+      3. Do the sPMV for each partition to obtain partial result
+      4. Collect the results from all processors to master
+    ☐ Reasons for doing this:
+      1. CSC matrix is both spacially and computationally more efficient
+      2. Local multiplication uses breeze.linalg CSC matrix routines to speed up
+      3. Partition requires communication across the system, this is the preprocessing time
+
+  Graph Matrix: 
+    ☐ This format has limitation that it stores only square matrices
+    ☐ Also, since the local operations are not optimized, this is not as efficient as CSC
+
+  API and Sample usage:
+    ☐ MatrixVector IO Class to initialize your matrix`
+    ☐ Use either "readVector" method in MatriVectorIO, or SparseUtility.randomVector for random vectors
+    ☐ Use matrix.multiply(vector, sc) to do the multiplication
+    ☐ The result is a LongVector(RDD[(Long, Double)]), you can "collect", "toArray" or "saveAsTextFile"
+    ☐ Demonstrate sample codes
+
+  Test inputs and Results:
+    ☐ Graph of average running time of COO and CSC storage formats
+    ☐ Graph of data processing time of both formats
+
+  Potential improvements/problems:
+    ☐ The processing time and communication over the cluster is much more expensive than local mode
+    ☐ Data partitioning is not efficient: i.e some nodes might have much more work to do than others

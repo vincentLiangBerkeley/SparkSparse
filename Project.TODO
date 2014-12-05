@@ -1,3 +1,4 @@
+
 Project Week 1:
   ✔ Write up IO routine for test matrices and vectors @done (14-10-24 16:44)
     ✔ Write up "MatrixVectorIO.scala" as an object that provides utility methods @done (14-10-24 16:44)
@@ -41,6 +42,9 @@ Project Week 3:
     ✔ Multiplying matrices as dense ones locally is much faster(100x) then using the Spark routine @done (14-11-09 17:22)
       It seems that the most expensive operation is the "map", that's because for each coordinate I did a "match" operation
       Performance is expected to improve if I know the type beforehand, i.e use implicit num ops
+--- ✄ -------------------------- ✄ -------------------------- ✄ -------------------------- ✄ -------------------------- ✄ -------------------------- ✄ ---------------------
+
+
 Project Week 4:
   ✔ Optimize the code, repartition should happen on input data, that is Entries: RDD[MatrixEntry] when reading the matrix in @done (14-11-11 17:48)
   ✔ Define a "rowForm" and a "colForm" members of the class, each is a repartition of data according to row/col respectively @done (14-11-11 20:51)
@@ -52,6 +56,7 @@ Project Week 4:
     1. Partition as subsets of rows
     2. Map each partition to a local breeze.CSCMatrix @Difficult
   ☐ Try to implement "Power Method" on sparse matrices, or even eigenvalue solvers. @Optional
+
 Project Week 5:
   ✔ Implement the multiplication routine on CSR matrix @done (14-11-18 16:41)
     Current problem is that the matrix does not seem to capture the last column of input data
@@ -64,6 +69,7 @@ Project Week 5:
   ✔ Test basic cases on current CSR implementation  @done (14-11-23 17:41)
   ☐ Possible optimization is to partition the matrix so that each partition has roughly the same number of nonzeros
     Also in the collection of partitioning problems. 
+
 Project Week7 :
   ✔ Figure out how to test codes on Edison system @done (14-12-01 23:04)
   ☐ Read the three papers on partitioning
@@ -73,4 +79,12 @@ Project Week7 :
   ✔ Also need a new class to capture result (large vectors) @done (14-12-03 23:12)
     1. This class has to support element-wise operations
     2. This class has to also support dot operations
-  ☐ But the problem is that if we use this longVector class, the multiplication is super slow, both the map and collect time
+  ✔ But the problem is that if we use this longVector class, the multiplication is super slow, both the map and collect time @done (14-12-04 15:01)
+
+  Spark launch script on Edison:
+    1. qsub -I -q ccm_int -l walltime=00:30:00 -l mppwidth=48
+    2. module load spark
+       ccmlogin -V
+    Now you are on a ccm node
+    3. start-all.sh (start master and worker nodes)
+    Now you can run spark-shell or spark-submit codes

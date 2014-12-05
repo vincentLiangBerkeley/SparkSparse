@@ -40,10 +40,9 @@ class CSCMatrix(
       nRows
     }
 
-    def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
-        // Check for sizes of multiplication
-        if(trans) require(vector.size == numRows.toInt, "Matrix-vector size mismatch!")
-        else require(vector.size == numCols.toInt, "Matrix-vector size mismatch!")
+    override def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
+        if (trans) checkSize(numRows, vector.size)
+        else checkSize(numCols, vector.size)
 
         val copies = sc.broadcast(vector.toArray)
         val v = DenseVector(copies.value)
@@ -56,7 +55,8 @@ class CSCMatrix(
                 val partialVec = mat * v
                 arr zip partialVec.toArray
             }
-            new LongVector(result)
+            if (trans) new LongVector(result, numCols)
+            else new LongVector(result, numRows)
         }else{
             // This is inefficient because we have to do the communication twice
             // Question: Can we do this only once?
@@ -73,15 +73,11 @@ class CSCMatrix(
                 val partialVec = mat * v
                 arr zip partialVec.toArray
             }
-
             val result = (first join second).mapValues{case (v1, v2) => v1 + v2}
 
-            new LongVector(result)
+            new LongVector(result, numRows)
         }      
     }
-
-    //private def mapMultiply(matrix: RDD[(Array[Double], BCM[Double])], v: Array[Double]): RDD[(Long, Double)]
-
 
     // Internally it stores as an RDD of (rows, BCM)
     // Partitioner here needs to be careful

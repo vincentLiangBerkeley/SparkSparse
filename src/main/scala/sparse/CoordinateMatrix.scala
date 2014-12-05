@@ -86,9 +86,10 @@ class CoordinateMatrix(
 
     This multiplication has one problem is that the output is a spark.linalg.Vector, which has size Int, but the numRows has size Long
   */
-  def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
-    require(numRows < Int.MaxValue && numCols < Int.MaxValue, "Cannot multiply this matrix because size is too large!")
-    require(vector.size == numCols.toInt, "Matrix vector size mismatch!")
+  override def multiply(vector: Vector, sc: SparkContext, trans: Boolean = false): LongVector = {
+    if (trans) checkSize(numRows, vector.size)
+    else checkSize(numCols, vector.size)
+
     val copies = sc.broadcast(vector.toArray)
     val v = DenseVector(copies.value)
 
@@ -96,16 +97,19 @@ class CoordinateMatrix(
       val vectorArray: RDD[(Long, Double)] = if (trans) colForm.map{case(ind, sp) => (ind, sp dot v)}
                                             else rowForm.map{case(ind, sp) => (ind, sp dot v)}
                                             
-      new LongVector(vectorArray)
+      if (trans) new LongVector(vectorArray, numCols)
+      else new LongVector(vectorArray, numCols)
     }else{
       // Notice that a symmetric matrix must be square
       // So we compute Ay + (A - diag(A))^Ty
       val first = rowForm.map{case(ind, sp) => (ind, sp dot v)}
       val second = colForm.map{case(ind, sp) => (ind, sp.dot(v) - sp(ind.toInt) * v(ind.toInt))}
 
+      // This join operation is expensive
       val vectorArray = (first join second).mapValues{case(v1, v2) => v1 + v2}
       
-      new LongVector(vectorArray)
+      if (trans) new LongVector(vectorArray, numCols)
+      else new LongVector(vectorArray, numRows)
     }
   }
 

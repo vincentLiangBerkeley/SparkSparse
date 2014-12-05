@@ -41,36 +41,23 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
         }
     }
 
-    def readMatrixGraph(name: String, partNum: Int = 4): GraphMatrix = {
-        val info = parseMatrix(name)
-        val entryField = info.entryField
-        val sym = info.sym
-        val data = info.entries
-        val size = info.size
-
-        entryField match {
-            case "real" | "integer" => 
-                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
-                new GraphMatrix(entries, size._1, size._2, partNum)
-            case "pattern" => 
-                val entries = data.map(x => (x(0).toLong - 1, x(1).toLong - 1, 1.0))
-                new GraphMatrix(entries, size._1, size._2, partNum)
-        }
-    }
-
     private def parseMatrix(name: String): MatrixInfo = {
-        val input = sc.textFile(filePath + name).map(x => x.split(' ').filter(y => y.length > 0))
-        val meta = input.take(2)
-        val matInfo = meta(0) // This has the matrix info like "sym", "real", "int", "pattern"
-        val sizeInfo = meta(1) // This has the size of the matrix
+        val input = sc.textFile(filePath + name)
+        
+        val matInfo = input.take(1)(0).split(' ') // This has the matrix info like "sym", "real", "int", "pattern"
+        val inputData = input.filter(s => s(0) != '%').map(x => x.split(' ').filter(y => y.length > 0))
+
+        val sizeInfo = inputData.take(1)(0) // This has the size of the matrix
         val size = (sizeInfo(0).toLong, sizeInfo(1).toLong)
 
         // The following codes depend on matrix market's matrix format
         val entryField = matInfo(3)
         val matFormat = matInfo(4)
 
+        System.out.println("The matrix is " + entryField + " " + matFormat + " with size " + size._1 + " by " + size._2 + " with nnz = " + sizeInfo(2))
+
         val sym: Boolean = if(matFormat == "general") false else true
-        val filteredInput = input.mapPartitionsWithIndex{case (index, iter) => if(index == 0) iter.drop(2) else iter}
+        val filteredInput = inputData.mapPartitionsWithIndex{case (index, iter) => if(index == 0) iter.drop(1) else iter}
 
         new MatrixInfo(entryField, size, sym, filteredInput)
     }
@@ -90,5 +77,22 @@ class MatrixVectorIO(val filePath: String, val sc: SparkContext) {
     def readVector(name: String): Vector = {
         val entries = Source.fromFile(filePath + name).getLines.map(x => x.toDouble).toArray
         Vectors.dense(entries)
+    }
+
+    def readMatrixGraph(name: String, partNum: Int = 4): GraphMatrix = {
+        val info = parseMatrix(name)
+        val entryField = info.entryField
+        val sym = info.sym
+        val data = info.entries
+        val size = info.size
+
+        entryField match {
+            case "real" | "integer" => 
+                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toLong - 1, x(2).toDouble))
+                new GraphMatrix(entries, size._1, size._2, sym, partNum)
+            case "pattern" => 
+                val entries = data.map(x => new MatrixEntry(x(0).toLong - 1, x(1).toLong - 1, 1.0))
+                new GraphMatrix(entries, size._1, size._2, sym, partNum)
+        }
     }
 }
